@@ -1,0 +1,15 @@
+{
+  "session_id": "AD086_exp1rec1",
+  "video_file": "/Volumes/experiments/EB_backup/AD086/AD086_exp1rec1/AD086_exp1rec1_2026-08-17T15-39-02.161.avi",
+  "oe_folder": "/Volumes/experiments/EB_backup/AD086/2026-08-17_15-39-04/Record Node 102/experiment1/recording1",
+  "output_dir": "out/AD086_exp1rec1",
+  "led_roi": null,
+  "write_trimmed_video": true,
+  "layout": {
+    "eeg": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64],
+    "emg": [65, 67],
+    "adc_led": 99,
+    "n_channels_expected": 104
+  },
+  "sync": {}
+}

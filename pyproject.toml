@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pup_state_pipeline"
+version = "0.0.1"
+description = "Video-ephys sync, behavioural-state analysis and reporting for pup recordings"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "opencv-python-headless>=4.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "matplotlib>=3.7"]
+
+[tool.setuptools.packages.find]
+include = ["pup_state_pipeline*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
