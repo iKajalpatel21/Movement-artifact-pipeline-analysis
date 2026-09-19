@@ -184,6 +184,8 @@ class SessionConfig:
     sync: SyncParams = field(default_factory=SyncParams)
     led_roi: list[int] | None = None  # [x, y, w, h] on the first frame
     write_trimmed_video: bool = True
+    save_eeg_emg_adc: bool = True   # the EEG/EMG/ADC bundle Full_Analysis.m needs
+    extract_eeg: bool = True        # matches her `extractEEG` -- off to skip the 64ch EEG and just keep EMG+ADC
 
     @classmethod
     def from_json(cls, path: str | Path) -> "SessionConfig":
@@ -197,6 +199,8 @@ class SessionConfig:
             sync=SyncParams(**d.get("sync", {})),
             led_roi=d.get("led_roi"),
             write_trimmed_video=d.get("write_trimmed_video", True),
+            save_eeg_emg_adc=d.get("save_eeg_emg_adc", True),
+            extract_eeg=d.get("extract_eeg", True),
         )
 
     def to_json(self, path: str | Path) -> None:
@@ -262,6 +266,15 @@ class RecordingReader:
 
     def channel(self, idx_1based: int) -> np.ndarray:
         return np.asarray(self.data[:, idx_1based - 1], dtype=np.float64)
+
+    def channels(self, idx_1based: list[int]) -> np.ndarray:
+        """Several channels at once, kept as raw int16 counts (no float cast).
+        For bulk per-channel exports (the EEG/EMG/ADC bundle) where dtype and
+        size matter -- ``channel()`` casts to float64 because detection math
+        needs it, but a 64-channel, full-recording export at float64 would be
+        needlessly 4x the size of what the raw stream actually is."""
+        cols = [i - 1 for i in idx_1based]
+        return np.asarray(self.data[:, cols], dtype=np.int16)
 
 
 @dataclass
@@ -787,6 +800,33 @@ class SyncRunner:
         (out / "timebase.json").write_text(json.dumps(timebase, indent=2))
         (out / "sync_qc.json").write_text(json.dumps(qc, indent=2))
         np.savez(out / "timebase_frames.npz", tV=tV, tEmap=tEmap, tTrim=tTrim)
+
+        # EEG/EMG/ADC bundle for Full_Analysis.m's Python successor. synch_raw_*.m
+        # already loaded these channels for LED-pulse detection (adc) -- this saves
+        # the full set (+ EEG, + the two EMG channels) alongside the fit, same as
+        # her own "EEG_EMG_ADC_downsampled_from_sync.mat" (raw int16 counts; the
+        # name says "downsampled" but her own 2026-07-30 fix note says decimation
+        # was removed -- this is full native-rate data, same as hers really is).
+        if cfg.save_eeg_emg_adc:
+            bundle_idx = (list(cfg.layout.eeg) if cfg.extract_eeg else []) + list(cfg.layout.emg) + [cfg.layout.adc_led]
+            bundle = reader.channels(bundle_idx)
+            n_eeg = len(cfg.layout.eeg) if cfg.extract_eeg else 0
+            bundle_path = out / "EEG_EMG_ADC_from_sync.npz"
+            np.savez(
+                bundle_path,
+                fs=reader.fs,
+                n_samples=reader.n_samples,
+                eeg=bundle[:, :n_eeg] if cfg.extract_eeg else np.empty((reader.n_samples, 0), dtype=np.int16),
+                emg1=bundle[:, n_eeg],
+                emg3=bundle[:, n_eeg + 1],
+                adc3=bundle[:, n_eeg + 2],
+                a=a, b=b,
+                eeg_idx=np.asarray(cfg.layout.eeg, dtype=np.int32),
+                emg_idx=np.asarray(cfg.layout.emg, dtype=np.int32),
+                adc_idx=cfg.layout.adc_led,
+            )
+            timebase["eeg_emg_adc_bundle"] = str(bundle_path)
+            (out / "timebase.json").write_text(json.dumps(timebase, indent=2))
 
         do_video = cfg.write_trimmed_video if write_video is None else write_video
         if do_video:
